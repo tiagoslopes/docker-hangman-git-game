@@ -1,0 +1,84 @@
+# 🗑️ PIPELINE DE LIMPEZA - Terraform Destroy
+# Este arquivo remove todos os recursos usando Terraform
+
+name: 🗑️ Destroy Git Game Infrastructure
+
+# 🎯 QUANDO EXECUTAR
+on:
+  workflow_dispatch:     # Só executa manualmente (segurança)
+    inputs:
+      confirm:
+        description: 'Digite "DESTROY" para confirmar'
+        required: true
+        default: ''
+
+# 💼 JOBS (Trabalhos que serão executados)
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    
+    # ⚠️ VALIDAÇÃO DE SEGURANÇA
+    if: github.event.inputs.confirm == 'DESTROY'
+    
+    steps:
+    # 🏁 PASSO 1: Baixar código do repositório
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    # 🏁 PASSO 2: Autenticar no Azure
+    - name: 🔑 Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    # 🏁 PASSO 3: Instalar Terraform
+    - name: 🏗️ Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+        
+    # 🏁 PASSO 4: Inicializar Terraform com backend
+    - name: 🔧 Terraform Init
+      run: |
+        cd terraform
+        export ARM_CLIENT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}"
+        export ARM_CLIENT_SECRET="${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}"
+        export ARM_TENANT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}"
+        export ARM_SUBSCRIPTION_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}"
+        
+        terraform init
+        
+    # 🏁 PASSO 5: Planejar destruição
+    - name: 📋 Terraform Plan Destroy
+      run: |
+        cd terraform
+        export ARM_CLIENT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}"
+        export ARM_CLIENT_SECRET="${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}"
+        export ARM_TENANT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}"
+        export ARM_SUBSCRIPTION_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}"
+        
+        terraform plan -destroy
+        
+    # 🏁 PASSO 6: Executar destruição
+    - name: 🗑️ Terraform Destroy
+      run: |
+        cd terraform
+        export ARM_CLIENT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}"
+        export ARM_CLIENT_SECRET="${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}"
+        export ARM_TENANT_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}"
+        export ARM_SUBSCRIPTION_ID="${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}"
+        
+        terraform destroy -auto-approve
+        
+    # 🏁 PASSO 7: Confirmação
+    - name: ✅ Destroy Complete
+      run: |
+        echo "🎉 DESTRUIÇÃO COMPLETA!"
+        echo ""
+        echo "📋 Recursos removidos:"
+        echo "  • Resource Group: rg-git-game"
+        echo "  • Container Registry"
+        echo "  • Container Instances"
+        echo "  • Todas as imagens Docker"
+        echo ""
+        echo "💰 Custo: R$ 0,00 a partir de agora!"
